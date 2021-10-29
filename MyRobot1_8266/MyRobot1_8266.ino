@@ -1,15 +1,16 @@
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 
-char auth[] = "****";
-char ssid[] = "***";
-char pass[] = "***";
+
+char auth[] = "";
+char ssid[] = "";
+char pass[] = "";
 int middle = 510;
 int maxim = 1020;
-int delta = 170;
+int delta =200;
 byte curMove=0;
 byte prevMove=1;
-long repete=0;
+bool result=true;
 
 
 void moveControl(int x, int y)
@@ -61,21 +62,18 @@ void moveControl(int x, int y)
         curMove=10;  // move back left
     }
 
-  Serial.write(curMove); 
+  if (prevMove!=curMove) {
+       Serial.write(curMove); 
+       prevMove=curMove;
+  }
 }
 
-
-void getData(unsigned char info){
-   float d=0; 
-   if (info>=200) {d=(info-200)/10.0; Blynk.virtualWrite(V7, d); return;}
-    if (info>100) {Blynk.virtualWrite(V4, info-100); return;}
-     if (info>21) {Blynk.virtualWrite(V5, info-50); return;}
-         if (info==21) {Blynk.virtualWrite(V6, "Movement detected!"); return;} 
-          if (info==20) Blynk.virtualWrite(V6, "No one...");
+void changeState()
+{
+  prevMove=1;
+  moveControl(middle, middle);
 }
 
-
-WidgetLED led1(V1);
 
 BLYNK_WRITE(V3)
 {
@@ -84,33 +82,29 @@ BLYNK_WRITE(V3)
   moveControl(x,y); 
 }
 
+
 BLYNK_WRITE(V2)
 {
- int pinValue = param.asInt();
-  if (pinValue==1) {
-    led1.on();
-    Serial.write(11);
-  } else {
-    led1.off();
-    Serial.write(12);
-  }
+  int z = 30 + param.asInt() / 10;    
+  Serial.write(z); 
 }
+
 
 
 void setup()
 {
-  Serial.begin(4800);
+  Serial.begin(9600);
   Blynk.begin(auth, ssid, pass);
 }
 
 
 void loop()
-{
-    unsigned char tryMe=0;
-    while (Serial.available() > 0) {
-       tryMe=Serial.peek();
-       if (tryMe>19) getData(Serial.read()); 
-       delay(2);
+{        
+    result = Blynk.connected();
+    if (!result) {    
+      changeState();
+      Blynk.disconnect();
+      Blynk.connect(15);      
     }
-    Blynk.run(); 
+    Blynk.run();
 }
